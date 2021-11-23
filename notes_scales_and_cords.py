@@ -1,12 +1,9 @@
 import numpy as np
 
 
-MAJOR = 'Major'
-MINOR = 'Minor'
-
+note_list = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B']
 
 def create_number_name_conversion_dictionaries():
-    note_list = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B']
     note_name = {}
     note_number = {}
     for number, name in enumerate(note_list):
@@ -15,7 +12,7 @@ def create_number_name_conversion_dictionaries():
             note_number[valid_name] = number + 40
     n = -8
     for o in range(9):
-        for i, x in enumerate(note_list):
+        for x in note_list:
             sharp_and_flat_name = [x + str(o) for x in x.split('/')]
             combined_name = '/'.join(sharp_and_flat_name)
             note_name[n] = combined_name
@@ -26,99 +23,85 @@ def create_number_name_conversion_dictionaries():
             n += 1
     return note_name, note_number
 
-
 note_name, note_number = create_number_name_conversion_dictionaries()
+
+def to_note_number(note):
+    if isinstance(note, int):
+        return note
+    elif isinstance(note, str):
+        return note_number[note]
 
 
 class Note:
-
     def __init__(self, note):
-        if isinstance(note, int):
-            self.number = note
-        elif isinstance(note, str):
-            self.number = note_number[note]
+        self.note = to_note_number(note)
 
     def __repr__(self):
-        return note_name[self.number]
+        return note_name[self.note]
 
     def __add__(self, halfnotes: int):
-        return Note(self.number + halfnotes)
+        return Note(self.note + halfnotes)
+
 
 class Notes:
     def __init__(self, root_note, intervals):
-        self.root_note = Note(root_note).number
-        self.intervals = intervals
+        root_note = to_note_number(root_note)
+        self.notes = [root_note + i for i in intervals]
 
     def __repr__(self):
-        return str([Note(self.root_note + i) for i in self.intervals])
+        return str([note_name[x] for x in np.sort(self.notes)])
+
 
 class Scale(Notes):
     def __init__(self, root_note, intervals):
         super().__init__(root_note, intervals)
-    
-    def __getitem__(self, key):
-        key = key
-        n = len(self.intervals)
-        octave = key//n
-        return self.intervals[key%n] + 12*octave
+
 
 class Cord(Notes):
     def __init__(self, root_note, intervals):
         super().__init__(root_note, intervals)
         
-    def name(self):
-        for cls in [MajorTriad, MinorTriad, DiminishedTriad]:
-            for possible_root in [self.root_note + x for x in self.intervals]:
-                if self == cls(possible_root):
-                    return cls(possible_root).name()
-        return 'Could not find name of cord: ' + str(self)
+    def find_name(self):
+        for type in intervals_of_named_cords:
+            for possible_root in [x for x in self.notes]:
+                named_cord = NamedCord(possible_root, type)
+                if self == named_cord:
+                    return named_cord.name
+        return f'Could not find name of cord: {self}'
 
     def __eq__(self, __o) -> bool:
-        return (np.sort([(self.root_note + x)%12 for x in self.intervals]) == np.sort([(__o.root_note + x)%12 for x in __o.intervals])).all()
+        return len(self.notes) == len(__o.notes) and (np.sort([x%12 for x in self.notes]) == np.sort([x%12 for x in __o.notes])).all()
 
-class NatrualScale(Scale):
-    def __init__(self, root_note, major_or_minor=MAJOR):
-        if major_or_minor == MAJOR:
-            super().__init__(root_note, [0, 2, 4, 5, 7, 9, 11])
-        if major_or_minor == MINOR:
-            super().__init__(root_note, [0, 2, 3, 5, 7, 8, 10])
+
+intervals_of_named_scales ={'Major': [0, 2, 4, 5, 7, 9, 11],
+                            'Minor': [0, 2, 3, 5, 7, 8, 10],
+                            'Major Pentatonic': [0, 2, 4, 7, 9],
+                            'Minor Pentatonic': [0, 2, 3, 7, 8]}
+        
+class NamedScale(Scale):
+    def __init__(self, root_note, type='Major'):
+        intervals = intervals_of_named_scales[type]
+        super().__init__(root_note, intervals)
 
     def get_triad_cord(self, cord_number):
-        return Cord(self.root_note + self[cord_number], [self[cord_number + i] - self[cord_number] for i in [0, 2, 4]])
+        return Cord(0, [(self.notes + [12 + x for x in self.notes])[cord_number + i] for i in [0, 2, 4]])
 
-class PentationicScale(Scale):
-    def __init__(self, root_note, major_or_minor=MAJOR):
-        corresponding_natural_scale = NatrualScale(root_note, major_or_minor)
-        super().__init__(corresponding_natural_scale.root_note, [x for i, x in enumerate(corresponding_natural_scale.intervals) if i+1 not in [4, 7]])
 
-class MajorTriad(Cord):
-    def __init__(self, root_note):
-            super().__init__(root_note, [0, 4, 7])
+intervals_of_named_cords = {'Major': [0, 4, 7],
+                            'Minor': [0, 3, 7],
+                            'Diminished': [0, 3, 6]}
 
-    def name(self):
-        return f'{Note(self.root_note)} Major'
-
-class MinorTriad(Cord):
-    def __init__(self, root_note):
-            super().__init__(root_note, [0, 3, 7])
-
-    def name(self):
-        return f'{Note(self.root_note)} Minor'
-
-class DiminishedTriad(Cord):
-    def __init__(self, root_note):
-        super().__init__(root_note, [0, 3, 6])
-
-    def name(self):
-        return f'{Note(self.root_note)} Diminished'
+class NamedCord(Cord):
+    def __init__(self, root_note, type='Major'):
+        super().__init__(root_note, intervals_of_named_cords[type])
+        self.name = f'{note_name[self.notes[0]]} {type}'
 
 
 if __name__ == '__main__':
-    c_major = Cord('C', [0, 4, 7])
-    c_major_inverted = Cord('E', [-4, 0, 3])
-    print(c_major_inverted.name())
-    scale = NatrualScale('A', MINOR)
+    c = Cord('C', [0])
+    print(c.find_name())
+    scale = NamedScale('A', 'Minor')
     print(scale)
     for i in range(7):
         cord = scale.get_triad_cord(i)
-        print(f'{cord.name()}: {cord}')
+        print(f'{cord.find_name()}: {cord}')
