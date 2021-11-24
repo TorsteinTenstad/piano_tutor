@@ -1,4 +1,6 @@
 import numpy as np
+import utility_functions
+from matplotlib import pyplot as plt
 
 
 note_list = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B']
@@ -57,17 +59,17 @@ class Scale(Notes):
         super().__init__(root_note, intervals)
 
 
-class Cord(Notes):
+class Chord(Notes):
     def __init__(self, root_note, intervals):
         super().__init__(root_note, intervals)
         
     def find_name(self):
-        for type in intervals_of_named_cords:
+        for quality in intervals_of_named_chords:
             for possible_root in [x for x in self.notes]:
-                named_cord = NamedCord(possible_root, type)
-                if self == named_cord:
-                    return named_cord.name
-        return f'Could not find name of cord: {self}'
+                named_chord = NamedChord(possible_root, quality)
+                if self == named_chord:
+                    return named_chord.name
+        return str(self)
 
     def __eq__(self, __o) -> bool:
         return len(self.notes) == len(__o.notes) and (np.sort([x%12 for x in self.notes]) == np.sort([x%12 for x in __o.notes])).all()
@@ -79,29 +81,40 @@ intervals_of_named_scales ={'Major': [0, 2, 4, 5, 7, 9, 11],
                             'Minor Pentatonic': [0, 2, 3, 7, 8]}
         
 class NamedScale(Scale):
-    def __init__(self, root_note, type='Major'):
-        intervals = intervals_of_named_scales[type]
+    def __init__(self, root_note, quality='Major'):
+        intervals = intervals_of_named_scales[quality]
         super().__init__(root_note, intervals)
 
-    def get_triad_cord(self, cord_number):
-        return Cord(0, [(self.notes + [12 + x for x in self.notes])[cord_number + i] for i in [0, 2, 4]])
+    def get_triad_chord(self, chord_number):
+        return Chord(0, [(self.notes + [12 + x for x in self.notes])[chord_number + i] for i in [0, 2, 4]])
 
 
-intervals_of_named_cords = {'Major': [0, 4, 7],
-                            'Minor': [0, 3, 7],
-                            'Diminished': [0, 3, 6]}
+intervals_of_named_chords = {'maj': [0, 4, 7],
+                            'min': [0, 3, 7],
+                            'dim': [0, 3, 6]}
 
-class NamedCord(Cord):
-    def __init__(self, root_note, type='Major'):
-        super().__init__(root_note, intervals_of_named_cords[type])
-        self.name = f'{note_name[self.notes[0]]} {type}'
+class NamedChord(Chord):
+    def __init__(self, root_note, quality='maj'):
+        super().__init__(root_note, intervals_of_named_chords[quality])
+        self.name = f'{note_name[self.notes[0]]}{quality}'
 
+
+def generate_random_chord():
+    root = np.random.choice(note_list)
+    chord_type = np.random.choice(list(intervals_of_named_chords))
+    return NamedChord(root, chord_type)
 
 if __name__ == '__main__':
-    c = Cord('C', [0])
-    print(c.find_name())
-    scale = NamedScale('A', 'Minor')
-    print(scale)
-    for i in range(7):
-        cord = scale.get_triad_cord(i)
-        print(f'{cord.find_name()}: {cord}')
+    chords = [f'{x} {chord_type}' for x in note_list for chord_type in intervals_of_named_chords]
+    chord_to_index = {chord: i for i, chord in enumerate(chords)}
+    print(chords)
+    scales = [[0.2 if (i//3)%2 else 0 for i, chord in enumerate(chords)] for note in note_list]
+    for i, root in enumerate(note_list):
+        scale = NamedScale(root, 'Major')
+        for j in range(1, 8):
+            chord = scale.get_triad_chord(j)
+            name = utility_functions.remove_numerics(chord.find_name())
+            id = chord_to_index[name]
+            scales[i][id] = 1
+    plt.imshow(np.array(scales), cmap='gray')
+    plt.show()

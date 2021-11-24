@@ -32,20 +32,20 @@ def pentationic_major_scale(root_note):
 def pentationic_minor_scale(root_note):
     return notes_halftones_from_root(root_note, [0, 2, 3, 7, 8])
     
-def major_cord(root_note):
+def major_chord(root_note):
     return notes_halftones_from_root(root_note, [0, 4, 7])
     
-def minor_cord(root_note):
+def minor_chord(root_note):
     return notes_halftones_from_root(root_note, [0, 3, 7])
 
-def triad_in_major_scale(root_note_in_scale, cord_number):
+def triad_in_major_scale(root_note_in_scale, chord_number):
     scale = major_scale(root_note_in_scale)
-    note_indices = notes_halftones_from_root(cord_number-1, [0, 2, 4])
+    note_indices = notes_halftones_from_root(chord_number-1, [0, 2, 4])
     return [scale[i%len(scale)] for i in note_indices]
 
-def triad_in_minor_scale(root_note_in_scale, cord_number):
+def triad_in_minor_scale(root_note_in_scale, chord_number):
     scale = minor_scale(root_note_in_scale)
-    note_indices = notes_halftones_from_root(cord_number-1, [0, 2, 4])
+    note_indices = notes_halftones_from_root(chord_number-1, [0, 2, 4])
     return [scale[i%len(scale)] for i in note_indices]
 
 def names(note_numbers):
@@ -54,14 +54,14 @@ def names(note_numbers):
     else:
         return note_number_to_name(note_numbers)
 
-def cord_to_name(note_numbers):
+def chord_to_name(note_numbers):
     for i in range(1, 13):
-        if note_numbers == major_cord(i):
+        if note_numbers == major_chord(i):
             return note_number_to_name(i) + ' Major'
-        if note_numbers == minor_cord(i):
+        if note_numbers == minor_chord(i):
             return note_number_to_name(i) + ' Minor'
-    return 'Could not find name of cord: ' + str(note_numbers)
+    return 'Could not find name of chord: ' + str(note_numbers)
 
 print(names(pentationic_major_scale('C')))
 for i in [1, 4, 6, 5]:
-    print(cord_to_name(triad_in_minor_scale('C', i)))
+    print(chord_to_name(triad_in_minor_scale('C', i)))
